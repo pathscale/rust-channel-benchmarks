@@ -1,26 +1,29 @@
 #!/usr/bin/env python3
 import sys
-from turtle import width
-from unittest import TestCase
 import pygal
 from PIL import Image
 
 
 def read_data(files):
     benchs = {}
-    # only to keep list shorted
-    names = ["kanal", "kanal-async", "kanal-std-mutex", "kanal-std-mutex-async",
-             "crossbeam-channel", "flume", "flume-async", "async-channel", "std::mpsc", "futures-channel"]
+    names = ["kanal", "kanal-async", "crossbeam-channel", "flume", "flume-async", "async-channel", "std::mpsc", "futures-channel", "tokio-mpsc", "pipe-connector"]
     for f in files:
-        with open(f) as f:
-            lines = f.readlines()
+        if "_latency" in f:
+            continue
+        with open(f) as fp:
+            lines = fp.readlines()
             if len(lines) < 2:
                 continue
             name = lines[0].strip("\n ")
             if name not in names:
                 names.append(name)
             for line in lines[1:]:
-                test, nsecs, ops = line.strip("\n ").split(",")
+                if line.startswith("---"):
+                    break
+                parts = line.strip("\n ").split(",")
+                if len(parts) < 3:
+                    continue
+                test, nsecs, ops = parts
                 splt = test.split('_')
                 test_cat = splt[0]
                 test_name = '_'.join(splt[1:])
@@ -28,12 +31,51 @@ def read_data(files):
                     benchs[test_cat] = {}
                 if test_name not in benchs[test_cat]:
                     benchs[test_cat][test_name] = {}
-                #benchs[test_cat][test_name][name] = float(nsecs)
                 benchs[test_cat][test_name][name] = float(ops)
     return benchs, names
 
 
-labels = ["seq", "spsc", "mpsc", "mpmc"]  # "select_rx", "select_both"
+def read_latency_data(files):
+    benchs = {}
+    names = ["kanal", "kanal-async", "crossbeam-channel", "flume", "flume-async", "async-channel", "std::mpsc", "futures-channel", "tokio-mpsc", "pipe-connector"]
+    for f in files:
+        if "_latency" not in f:
+            continue
+        with open(f) as fp:
+            lines = fp.readlines()
+            if len(lines) < 2:
+                continue
+            name = lines[0].strip("\n ")
+            if name not in names:
+                names.append(name)
+            for line in lines[1:]:
+                parts = line.strip("\n ").split(",")
+                if len(parts) < 7:
+                    continue
+                test = parts[0]
+                min_ns, p50_ns, p90_ns, p99_ns, p999_ns, max_ns = [float(x) for x in parts[1:7]]
+                # Parse: bounded1_spsc(empty) -> pattern=spsc, payload=empty
+                # Split by '(' to get pattern part and payload
+                if '(' in test:
+                    before_paren = test.split('(')[0]  # bounded1_spsc
+                    payload = test.split('(')[1].rstrip(')')  # empty
+                    # Get pattern from last underscore-separated part
+                    pattern = before_paren.split('_')[-1]  # spsc
+                else:
+                    pattern = test
+                    payload = ""
+                if pattern not in benchs:
+                    benchs[pattern] = {}
+                if payload not in benchs[pattern]:
+                    benchs[pattern][payload] = {}
+                benchs[pattern][payload][name] = {
+                    'min': min_ns, 'p50': p50_ns, 'p90': p90_ns,
+                    'p99': p99_ns, 'p999': p999_ns, 'max': max_ns
+                }
+    return benchs, names
+
+
+labels = ["seq", "spsc", "mpsc", "mpmc"]
 variants = ["empty", "usize", "big"]
 
 
@@ -44,102 +86,60 @@ def sortFn(key):
     return v
 
 
-titles = {
-    "bounded0": "Bounded Channel With Size 0 Benchmark\n(Operations per second, Higher is better)",
-    "bounded1": "Bounded Channel With Size 1 Benchmark\n(Operations per second, Higher is better)",
-    "bounded": "Bounded Channel With Size N Benchmark\n(Operations per second, Higher is better)",
-    "unbounded": "Unbounded Channel Benchmark\n(Operations per second, Higher is better)",
-}
-
-
-def is_all_none(arr):
-    for v in arr:
-        if v is not None:
-            return False
-    return True
-
-
 color_set = {
-    'magenta': '#ff00ff',
-    'maroon': '#800000',
-    'navy': '#000080',
-    'olive': '#808000',
-    'orange': '#ffa500',
+    'green': "#0aa16b",
+    'lightgreen': "#32cd32",
+    'azure': '#19ffae',
     'purple': '#800080',
     'lightpurple': '#eb50eb',
     'red': '#ff0000',
-    'aqua': '#00ffff',
-    'black': '#000000',
-    'blue': '#0000ff',
-    'brown': '#301607',
-    'cyan': '#00ffff',
-    'darkblue': '#00008b',
-    'darkcyan': '#008b8b',
-    'darkgrey': '#a9a9a9',
-    'darkgreen': '#006400',
-    'darkkhaki': '#bdb76b',
-    'darkmagenta': '#8b008b',
-    'darkolivegreen': '#556b2f',
-    'darkorange': '#ff8c00',
-    'darkorchid': '#9932cc',
     'darkred': '#8b0000',
-    'darksalmon': '#e9967a',
-    'darkviolet': '#9400d3',
-    'fuchsia': '#ff00ff',
-    'gold': '#dbb900',
-    'lightgold': '#fad302',
-    'azure': '#19ffae',
-    'indigo': '#4b0082',
-    'khaki': '#f0e68c',
-    'lime': '#00ff00',
+    'brown': '#301607',
     'lightblue': "#3dc2ff",
     'lightbrown': "#7a4d32",
-    'green': "#0aa16b"
+    'orange': "#ff8c00",
+    'cyan': "#00ffff",
+    'pink': "#ff69b4",
 }
-
 
 colors = {
     "kanal": "green",
     "kanal-async": "azure",
-    "kanal-std-mutex": "gold",
-    "kanal-std-mutex-async": "lightgold",
-    "go": "blue",
     "flume": "purple",
     "flume-async": "lightpurple",
     "async-channel": "lightblue",
     "crossbeam-channel": "red",
     "std::mpsc": "brown",
     "futures-channel": "lightbrown",
+    "crossfire": "orange",
+    "crossfire-async": "cyan",
+    "futures-intrusive": "pink",
+    "tokio-mpsc": "lightgreen",
+    "pipe-connector": "darkred",
 }
 
 
 def get_color(name):
-    if name.find("go") == 0:
-        name = "go"
     if name in colors:
         return color_set[colors[name]]
-    reserved = sorted(colors.values())
+    used_colors = set(colors.values())
     for k in color_set:
-        if k not in reserved:
+        if k not in used_colors:
             colors[name] = k
             return color_set[k]
+    return "#888888"
 
 
 def make_rows(bench_name, bench, names):
-    # bench_keys = sorted(bench.keys())
     bench_keys = list(bench.keys())
     bench_keys.sort(key=sortFn)
     x_labels = bench_keys
-    for label in labels:
-        if label in bench_keys:
-            x_labels.append(label)
 
     rows = []
     for name in names:
         row = []
         for label in x_labels:
             if name in bench[label]:
-                # row.append(round(bench[label][name]/1e9, 2)) # convert to seconds
                 row.append(bench[label][name])
             else:
                 row.append(None)
@@ -147,24 +147,9 @@ def make_rows(bench_name, bench, names):
     return rows, x_labels
 
 
-def normalize_rows(rows):
-    norm = []
-    for (name, row) in rows:
-        if name == "kanal":
-            norm = row
-    for idx, (name, row) in enumerate(rows):
-        rows[idx] = (
-            name, [round(i / j, 2) if i is not None else 0 for i, j in zip(row, norm)])
-
-
 def set_zero_none_fields(rows):
-    norm = []
-    for (name, row) in rows:
-        if name == "kanal":
-            norm = row
     for idx, (name, row) in enumerate(rows):
-        rows[idx] = (
-            name, [i if i is not None else 0 for i, j in zip(row, norm)])
+        rows[idx] = (name, [i if i is not None else 0 for i in row])
 
 
 def concat_vertical(imgs, to):
@@ -179,17 +164,41 @@ def concat_vertical(imgs, to):
     output.save(to)
 
 
+def get_range_excluding_outliers(rows, outlier_threshold=2.0):
+    """Calculate y-axis max from non-outlier values.
+    Outliers are values > outlier_threshold * p90 (90th percentile).
+    """
+    all_values = []
+    for (name, row) in rows:
+        all_values.extend([v for v in row if v is not None and v > 0])
+
+    if not all_values:
+        return rows, None
+
+    sorted_vals = sorted(all_values)
+    p90_idx = int(len(sorted_vals) * 0.90)
+    p90 = sorted_vals[p90_idx]
+
+    # Get max from non-outlier values only
+    normal_values = [v for v in all_values if v <= p90 * outlier_threshold]
+    if normal_values:
+        max_y = max(normal_values) * 1.1  # Add 10% padding
+    else:
+        max_y = p90 * outlier_threshold
+
+    return rows, max_y
+
+
 def chart(benchs, names):
     for bench_name in benchs:
         bench = benchs[bench_name]
-        rows, label_list = make_rows(bench_name, bench, names)
-        x_labels = label_list  # []
-        for label in labels:
-            if label in label_list:
-                x_labels.append(label)
+        rows, x_labels = make_rows(bench_name, bench, names)
         bar_colors = []
         for (name, _) in rows:
             bar_colors.append(get_color(name))
+
+        rows, max_y = get_range_excluding_outliers(rows)
+
         custom_style = pygal.style.Style(
             colors=bar_colors, value_font_size=9,
             value_colors=bar_colors,
@@ -206,28 +215,93 @@ def chart(benchs, names):
             value_formatter=lambda x: '{}M'.format(
                 round(x/1e6, 1) if x > 1e5 else round(x/1e6, 2)
             ) if x > 0 else "N/A",
-            style=custom_style
+            style=custom_style,
+            range=(0, max_y) if max_y else None,
         )
-        chart.title = titles[bench_name]
+        chart.title = f"{bench_name} Bounded(1) Channel Benchmark\n(Operations per second, Higher is better)"
         chart.x_labels = x_labels
-        # normalize_rows(rows)
         set_zero_none_fields(rows)
         for (name, row) in rows:
             chart.add(name, row)
-        chart.render_to_png("target/plot_{}.png".format(bench_name))
-        chart.render_to_file("target/plot_{}.svg".format(bench_name))
-    imgs = []
-    for bench_name in ["bounded0",
-                       "bounded1",
-                       "bounded",
-                       "unbounded"]:
-        imgs.append(Image.open("target/plot_{}.png".format(bench_name)))
-    concat_vertical(imgs, "target/results.png")
+        chart.render_to_png(f"target/plot_{bench_name}.png")
+        chart.render_to_file(f"target/plot_{bench_name}.svg")
+
+
+def chart_latency(benchs, names):
+    latency_patterns = ["spsc", "mpsc", "mpmc"]
+    latency_payloads = ["empty", "usize", "big"]
+
+    # Only use channels that have latency data
+    latency_names = []
+    for name in names:
+        for pattern in benchs:
+            for payload in benchs[pattern]:
+                if name in benchs[pattern][payload]:
+                    if name not in latency_names:
+                        latency_names.append(name)
+                    break
+
+    for percentile in ['p50', 'p99', 'max']:
+        rows = []
+        x_labels = []
+        for pattern in latency_patterns:
+            for payload in latency_payloads:
+                x_labels.append(f"{pattern}({payload})")
+
+        for name in latency_names:
+            row = []
+            for pattern in latency_patterns:
+                for payload in latency_payloads:
+                    if pattern in benchs and payload in benchs[pattern] and name in benchs[pattern][payload]:
+                        row.append(benchs[pattern][payload][name][percentile])
+                    else:
+                        row.append(None)
+            rows.append((name, row))
+
+        # Calculate reasonable y-axis max excluding outliers
+        _, max_y = get_range_excluding_outliers(rows)
+
+        bar_colors = []
+        for (name, _) in rows:
+            bar_colors.append(get_color(name))
+        custom_style = pygal.style.Style(
+            colors=bar_colors, value_font_size=9,
+            value_colors=bar_colors,
+            legend_font_size=10,
+            title_font_size=12,
+        )
+        chart = pygal.Bar(
+            margin=5,
+            width=1200,
+            height=350,
+            legend_at_bottom=True,
+            print_values=True,
+            print_values_position='top',
+            value_formatter=lambda x: '{}µs'.format(round(x/1000, 1)) if x > 1000 else '{}ns'.format(round(x, 0)) if x > 0 else "N/A",
+            style=custom_style,
+            range=(0, max_y) if max_y else None,
+        )
+        chart.title = f"Bounded(1) Channel Latency Benchmark - {percentile}\n(Lower is better)"
+        chart.x_labels = x_labels
+        set_zero_none_fields(rows)
+        for (name, row) in rows:
+            chart.add(name, row)
+        chart.render_to_png(f"target/plot_latency_{percentile}.png")
+        chart.render_to_file(f"target/plot_latency_{percentile}.svg")
 
 
 def main():
     benchs, names = read_data(sys.argv[1:])
+    latency_benchs, latency_names = read_latency_data(sys.argv[1:])
     chart(benchs, names)
+    chart_latency(latency_benchs, names)
+
+    imgs = []
+    for bench_name in ["bounded1"]:
+        imgs.append(Image.open(f"target/plot_{bench_name}.png"))
+    for percentile in ['p50', 'p99', 'max']:
+        imgs.append(Image.open(f"target/plot_latency_{percentile}.png"))
+    concat_vertical(imgs, "target/results.png")
 
 
 if __name__ == '__main__':

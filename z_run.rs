@@ -1,6 +1,3 @@
-use std::time::Duration;
-use std::time::Instant;
-
 #[allow(unused_macros)]
 macro_rules! run {
     ($name:expr, $f:expr) => {
@@ -45,6 +42,18 @@ macro_rules! run_async {
             $name,
             (sum_elapsed / count).as_nanos(),
             ((count as f64 * MESSAGES as f64) / sum_elapsed.as_secs_f64()).round()
+        );
+    };
+}
+
+#[allow(unused_macros)]
+macro_rules! run_latency {
+    ($name:expr, $stats:expr) => {
+        let mut stats = $stats;
+        let (min, p50, p90, p99, p999, max) = stats.compute();
+        println!(
+            "{},{},{},{},{},{},{},{}",
+            $name, min, p50, p90, p99, p999, max, stats.samples.len()
         );
     };
 }

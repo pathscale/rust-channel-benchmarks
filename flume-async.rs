@@ -3,6 +3,7 @@ use flume::{bounded, unbounded, Receiver, Sender};
 std::include!("settings.rs");
 std::include!("z_types.rs");
 std::include!("z_run.rs");
+
 fn new<T>(cap: Option<usize>) -> (Sender<T>, Receiver<T>) {
     match cap {
         None => unbounded(),
@@ -10,32 +11,32 @@ fn new<T>(cap: Option<usize>) -> (Sender<T>, Receiver<T>) {
     }
 }
 
-async fn mpmc<T: BenchType + 'static>(cap: Option<usize>) {
+async fn seq<T: BenchType + 'static>(cap: Option<usize>) {
     let (tx, rx) = new(cap);
-    let mut list = Vec::new();
-    for _ in 0..THREADS {
-        let tx = tx.clone();
-        let h = tokio::spawn(async move {
-            for i in 1..MESSAGES / THREADS + 1 {
-                tx.send_async(T::new(i)).await.unwrap();
-            }
-        });
-        list.push(h);
+
+    for i in 1..MESSAGES + 1 {
+        tx.send_async(T::new(i)).await.unwrap();
     }
 
-    for _ in 0..THREADS {
-        let rx = rx.clone();
-        let h = tokio::spawn(async move {
-            for _ in 0..MESSAGES / THREADS {
-                rx.recv_async().await.unwrap().test()
-            }
-        });
-        list.push(h);
+    for _ in 0..MESSAGES {
+        rx.recv_async().await.unwrap().test();
+    }
+}
+
+async fn spsc<T: BenchType + 'static>(cap: Option<usize>) {
+    let (tx, rx) = new(cap);
+
+    let htx = tokio::spawn(async move {
+        for i in 1..MESSAGES + 1 {
+            tx.send_async(T::new(i)).await.unwrap();
+        }
+    });
+
+    for _ in 0..MESSAGES {
+        rx.recv_async().await.unwrap().test();
     }
 
-    for h in list {
-        h.await.unwrap();
-    }
+    htx.await.unwrap();
 }
 
 async fn mpsc<T: BenchType + 'static>(cap: Option<usize>) {
@@ -52,96 +53,156 @@ async fn mpsc<T: BenchType + 'static>(cap: Option<usize>) {
         list.push(h);
     }
 
-    list.push(tokio::spawn(async move {
-        for _ in 0..MESSAGES {
-            rx.recv_async().await.unwrap().test()
-        }
-    }));
+    for _ in 0..MESSAGES {
+        rx.recv_async().await.unwrap().test();
+    }
 
     for h in list {
         h.await.unwrap();
     }
 }
 
-async fn seq<T: BenchType + 'static>(cap: Option<usize>) {
+async fn mpmc<T: BenchType + 'static>(cap: Option<usize>) {
     let (tx, rx) = new(cap);
+    let mut list = Vec::new();
 
-    let h = tokio::spawn(async move {
-        for i in 1..MESSAGES + 1 {
-            tx.send_async(T::new(i)).await.unwrap();
-        }
+    for _ in 0..THREADS {
+        let tx = tx.clone();
+        let h = tokio::spawn(async move {
+            for i in 1..MESSAGES / THREADS + 1 {
+                tx.send_async(T::new(i)).await.unwrap();
+            }
+        });
+        list.push(h);
+    }
 
-        for _ in 0..MESSAGES {
-            rx.recv_async().await.unwrap().test()
-        }
-    });
+    for _ in 0..THREADS {
+        let rx = rx.clone();
+        let h = tokio::spawn(async move {
+            for _ in 0..MESSAGES / THREADS {
+                rx.recv_async().await.unwrap().test();
+            }
+        });
+        list.push(h);
+    }
 
-    h.await.unwrap();
+    for h in list {
+        h.await.unwrap();
+    }
 }
 
-async fn spsc<T: BenchType + 'static>(cap: Option<usize>) {
+async fn spsc_latency<T: BenchType + 'static>(cap: Option<usize>) -> LatencyStats {
     let (tx, rx) = new(cap);
+    let mut stats = LatencyStats::new();
 
     let htx = tokio::spawn(async move {
-        for i in 1..MESSAGES + 1 {
-            tx.send_async(T::new(i)).await.unwrap();
-        }
-    });
-    let hrx = tokio::spawn(async move {
-        for _ in 0..MESSAGES {
-            rx.recv_async().await.unwrap().test()
+        for i in 1..LATENCY_MESSAGES + 1 {
+            tx.send_async(LatencyMessage::new(T::new(i))).await.unwrap();
         }
     });
 
+    for _ in 0..LATENCY_MESSAGES {
+        let msg = rx.recv_async().await.unwrap();
+        msg.test();
+        stats.add(msg.latency().as_nanos() as u64);
+    }
+
     htx.await.unwrap();
-    hrx.await.unwrap();
+    stats
+}
+
+async fn mpsc_latency<T: BenchType + 'static>(cap: Option<usize>) -> LatencyStats {
+    let (tx, rx) = new(cap);
+    let mut stats = LatencyStats::new();
+    let mut list = Vec::new();
+
+    for _ in 0..THREADS {
+        let tx = tx.clone();
+        let h = tokio::spawn(async move {
+            for i in 1..LATENCY_MESSAGES / THREADS + 1 {
+                tx.send_async(LatencyMessage::new(T::new(i))).await.unwrap();
+            }
+        });
+        list.push(h);
+    }
+
+    for _ in 0..LATENCY_MESSAGES {
+        let msg = rx.recv_async().await.unwrap();
+        msg.test();
+        stats.add(msg.latency().as_nanos() as u64);
+    }
+
+    for h in list {
+        h.await.unwrap();
+    }
+
+    stats
+}
+
+async fn mpmc_latency<T: BenchType + 'static>(cap: Option<usize>) -> LatencyStats {
+    let (tx, rx) = new(cap);
+    let mut list = Vec::new();
+
+    for _ in 0..THREADS {
+        let tx = tx.clone();
+        let h = tokio::spawn(async move {
+            for i in 1..LATENCY_MESSAGES / THREADS + 1 {
+                tx.send_async(LatencyMessage::new(T::new(i))).await.unwrap();
+            }
+        });
+        list.push(h);
+    }
+
+    let consumer_handles: Vec<_> = (0..THREADS)
+        .map(|_| {
+            let rx = rx.clone();
+            tokio::spawn(async move {
+                let mut stats = LatencyStats::new();
+                for _ in 0..LATENCY_MESSAGES / THREADS {
+                    let msg = rx.recv_async().await.unwrap();
+                    msg.test();
+                    stats.add(msg.latency().as_nanos() as u64);
+                }
+                stats
+            })
+        })
+        .collect();
+
+    for h in list {
+        h.await.unwrap();
+    }
+
+    let mut merged = LatencyStats::new();
+    for handle in consumer_handles {
+        merged.merge(handle.await.unwrap());
+    }
+    merged
 }
 
 #[tokio::main]
 async fn main() {
     println!("flume-async");
-    run_async!("bounded0_mpmc(empty)", mpmc::<BenchEmpty>(Some(0)));
-    run_async!("bounded0_mpsc(empty)", mpsc::<BenchEmpty>(Some(0)));
-    run_async!("bounded0_spsc(empty)", spsc::<BenchEmpty>(Some(0)));
+
     run_async!("bounded1_mpmc(empty)", mpmc::<BenchEmpty>(Some(1)));
     run_async!("bounded1_mpsc(empty)", mpsc::<BenchEmpty>(Some(1)));
     run_async!("bounded1_spsc(empty)", spsc::<BenchEmpty>(Some(1)));
-    run_async!("bounded_mpmc(empty)", mpmc::<BenchEmpty>(Some(MESSAGES)));
-    run_async!("bounded_mpsc(empty)", mpsc::<BenchEmpty>(Some(MESSAGES)));
-    run_async!("bounded_seq(empty)", seq::<BenchEmpty>(Some(MESSAGES)));
-    run_async!("bounded_spsc(empty)", spsc::<BenchEmpty>(Some(MESSAGES)));
-    run_async!("unbounded_mpmc(empty)", mpmc::<BenchEmpty>(None));
-    run_async!("unbounded_mpsc(empty)", mpsc::<BenchEmpty>(None));
-    run_async!("unbounded_seq(empty)", seq::<BenchEmpty>(None));
-    run_async!("unbounded_spsc(empty)", spsc::<BenchEmpty>(None));
 
-    run_async!("bounded0_mpmc(usize)", mpmc::<BenchUsize>(Some(0)));
-    run_async!("bounded0_mpsc(usize)", mpsc::<BenchUsize>(Some(0)));
-    run_async!("bounded0_spsc(usize)", spsc::<BenchUsize>(Some(0)));
     run_async!("bounded1_mpmc(usize)", mpmc::<BenchUsize>(Some(1)));
     run_async!("bounded1_mpsc(usize)", mpsc::<BenchUsize>(Some(1)));
     run_async!("bounded1_spsc(usize)", spsc::<BenchUsize>(Some(1)));
-    run_async!("bounded_mpmc(usize)", mpmc::<BenchUsize>(Some(MESSAGES)));
-    run_async!("bounded_mpsc(usize)", mpsc::<BenchUsize>(Some(MESSAGES)));
-    run_async!("bounded_seq(usize)", seq::<BenchUsize>(Some(MESSAGES)));
-    run_async!("bounded_spsc(usize)", spsc::<BenchUsize>(Some(MESSAGES)));
-    run_async!("unbounded_mpmc(usize)", mpmc::<BenchUsize>(None));
-    run_async!("unbounded_mpsc(usize)", mpsc::<BenchUsize>(None));
-    run_async!("unbounded_seq(usize)", seq::<BenchUsize>(None));
-    run_async!("unbounded_spsc(usize)", spsc::<BenchUsize>(None));
 
-    run_async!("bounded0_mpmc(big)", mpmc::<BenchFixedArray>(Some(0)));
-    run_async!("bounded0_mpsc(big)", mpsc::<BenchFixedArray>(Some(0)));
-    run_async!("bounded0_spsc(big)", spsc::<BenchFixedArray>(Some(0)));
     run_async!("bounded1_mpmc(big)", mpmc::<BenchFixedArray>(Some(1)));
     run_async!("bounded1_mpsc(big)", mpsc::<BenchFixedArray>(Some(1)));
     run_async!("bounded1_spsc(big)", spsc::<BenchFixedArray>(Some(1)));
-    run_async!("bounded_mpmc(big)", mpmc::<BenchFixedArray>(Some(MESSAGES)));
-    run_async!("bounded_mpsc(big)", mpsc::<BenchFixedArray>(Some(MESSAGES)));
-    run_async!("bounded_seq(big)", seq::<BenchFixedArray>(Some(MESSAGES)));
-    run_async!("bounded_spsc(big)", spsc::<BenchFixedArray>(Some(MESSAGES)));
-    run_async!("unbounded_mpmc(big)", mpmc::<BenchFixedArray>(None));
-    run_async!("unbounded_mpsc(big)", mpsc::<BenchFixedArray>(None));
-    run_async!("unbounded_seq(big)", seq::<BenchFixedArray>(None));
-    run_async!("unbounded_spsc(big)", spsc::<BenchFixedArray>(None));
+
+    println!("--- latency ---");
+    run_latency!("bounded1_spsc(empty)", spsc_latency::<BenchEmpty>(Some(1)).await);
+    run_latency!("bounded1_mpsc(empty)", mpsc_latency::<BenchEmpty>(Some(1)).await);
+    run_latency!("bounded1_mpmc(empty)", mpmc_latency::<BenchEmpty>(Some(1)).await);
+    run_latency!("bounded1_spsc(usize)", spsc_latency::<BenchUsize>(Some(1)).await);
+    run_latency!("bounded1_mpsc(usize)", mpsc_latency::<BenchUsize>(Some(1)).await);
+    run_latency!("bounded1_mpmc(usize)", mpmc_latency::<BenchUsize>(Some(1)).await);
+    run_latency!("bounded1_spsc(big)", spsc_latency::<BenchFixedArray>(Some(1)).await);
+    run_latency!("bounded1_mpsc(big)", mpsc_latency::<BenchFixedArray>(Some(1)).await);
+    run_latency!("bounded1_mpmc(big)", mpmc_latency::<BenchFixedArray>(Some(1)).await);
 }

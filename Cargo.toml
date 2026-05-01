@@ -3,15 +3,21 @@ name = "benchmarks"
 version = "0.1.0"
 edition = "2018"
 
+[lib]
+path = "lib.rs"
+
 [dependencies]
 async-channel = "1.7"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
 flume = "0.10"
 futures = { version = "0.3", features = ["thread-pool"] }
-tokio = { version = "1", features = ["rt-multi-thread", "macros"] }
-kanal = { git = "https://github.com/fereidani/kanal" }
-kanal-std-mutex = { path = "kanal2", features = ["std-mutex"], package = "kanal" }
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+kanal = "0.1.1"
+crossfire = "3.1.7"
+futures-intrusive = { version = "0.5.0", features = ["parking_lot"] }
+parking_lot = "0.12"
+eyre = "0.6"
 
 [profile.release]
 opt-level = 3
@@ -39,16 +45,6 @@ path = "kanal-async.rs"
 doc = false
 
 [[bin]]
-name = "kanal-std-mutex"
-path = "kanal-std-mutex.rs"
-doc = false
-
-[[bin]]
-name = "kanal-std-mutex-async"
-path = "kanal-std-mutex-async.rs"
-doc = false
-
-[[bin]]
 name = "flume"
 path = "flume.rs"
 doc = false
@@ -71,5 +67,30 @@ doc = false
 [[bin]]
 name = "async-channel"
 path = "async-channel.rs"
+doc = false
+
+[[bin]]
+name = "crossfire"
+path = "crossfire.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-async"
+path = "crossfire-async.rs"
+doc = false
+
+[[bin]]
+name = "futures-intrusive"
+path = "futures-intrusive.rs"
+doc = false
+
+[[bin]]
+name = "tokio-mpsc"
+path = "tokio-mpsc.rs"
+doc = false
+
+[[bin]]
+name = "pipe-connector"
+path = "pipe-connector-bench.rs"
 doc = false
 
