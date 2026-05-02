@@ -1,12 +1,13 @@
 #!/usr/bin/env python3
 import sys
+import glob as _glob
 import pygal
 from PIL import Image
 
 
 def read_data(files):
     benchs = {}
-    names = ["kanal", "kanal-async", "crossbeam-channel", "flume", "flume-async", "async-channel", "std::mpsc", "futures-channel", "tokio-mpsc", "pipe-connector"]
+    names = ["crossfire", "crossfire-async", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
     for f in files:
         if "_latency" in f:
             continue
@@ -37,7 +38,7 @@ def read_data(files):
 
 def read_latency_data(files):
     benchs = {}
-    names = ["kanal", "kanal-async", "crossbeam-channel", "flume", "flume-async", "async-channel", "std::mpsc", "futures-channel", "tokio-mpsc", "pipe-connector"]
+    names = ["crossfire", "crossfire-async", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
     for f in files:
         if "_latency" not in f:
             continue
@@ -87,35 +88,22 @@ def sortFn(key):
 
 
 color_set = {
-    'green': "#0aa16b",
-    'lightgreen': "#32cd32",
-    'azure': '#19ffae',
-    'purple': '#800080',
-    'lightpurple': '#eb50eb',
-    'red': '#ff0000',
-    'darkred': '#8b0000',
-    'brown': '#301607',
-    'lightblue': "#3dc2ff",
-    'lightbrown': "#7a4d32",
-    'orange': "#ff8c00",
-    'cyan': "#00ffff",
-    'pink': "#ff69b4",
+    'indigo':    "#6366f1",
+    'violet':    "#a78bfa",
+    'teal':      "#2dd4bf",
+    'sky':       "#38bdf8",
+    'rose':      "#fb7185",
+    'amber':     "#fbbf24",
+    'emerald':   "#34d399",
+    'fuchsia':   "#e879f9",
 }
 
 colors = {
-    "kanal": "green",
-    "kanal-async": "azure",
-    "flume": "purple",
-    "flume-async": "lightpurple",
-    "async-channel": "lightblue",
-    "crossbeam-channel": "red",
-    "std::mpsc": "brown",
-    "futures-channel": "lightbrown",
-    "crossfire": "orange",
-    "crossfire-async": "cyan",
-    "futures-intrusive": "pink",
-    "tokio-mpsc": "lightgreen",
-    "pipe-connector": "darkred",
+    "crossfire":          "indigo",
+    "crossfire-async":    "teal",
+    "tokio-oneshot":      "rose",
+    "bounded-spsc-queue": "amber",
+    "multiqueue2":        "fuchsia",
 }
 
 
@@ -291,8 +279,9 @@ def chart_latency(benchs, names):
 
 
 def main():
-    benchs, names = read_data(sys.argv[1:])
-    latency_benchs, latency_names = read_latency_data(sys.argv[1:])
+    files = [f for pattern in sys.argv[1:] for f in (_glob.glob(pattern) or [pattern])]
+    benchs, names = read_data(files)
+    latency_benchs, latency_names = read_latency_data(files)
     chart(benchs, names)
     chart_latency(latency_benchs, names)
 

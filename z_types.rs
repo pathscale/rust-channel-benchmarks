@@ -7,7 +7,7 @@ trait BenchType: Send + Sync {
 }
 
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 struct LatencyMessage<T> {
     send_time: Instant,
     payload: T,
@@ -66,15 +66,15 @@ impl LatencyStats {
     }
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct BenchEmpty {}
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct BenchUsize {
     a: usize,
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 struct BenchFixedArray([usize; 4]);
 
 impl BenchType for BenchEmpty {

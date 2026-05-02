@@ -1,0 +1,13 @@
+[project]
+name = "rust-channel-benchmarks"
+version = "0.1.0"
+description = "Benchmark suite for Rust channel implementations"
+requires-python = ">=3.8"
+dependencies = [
+    "pygal>=3.0.0",
+    "cairosvg>=2.5.0",
+    "pillow>=9.0.0",
+]
+
+[tool.uv]
+managed = true

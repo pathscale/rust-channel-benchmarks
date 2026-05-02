@@ -100,7 +100,6 @@ async fn spsc_latency<T: BenchType + Debug + Send + Unpin + 'static>(cap: usize)
         let msg = rx.next().await.unwrap();
         msg.test();
         let lat = msg.latency().as_nanos();
-        println!("{}ns", lat);
         stats.add(lat as u64);
     }
 

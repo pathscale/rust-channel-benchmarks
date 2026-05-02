@@ -2,6 +2,7 @@
 """Generate human-readable text tables from benchmark CSV files."""
 
 import sys
+import glob as _glob
 from pathlib import Path
 
 
@@ -238,7 +239,7 @@ def print_summary_comparison(benchs, names, category="bounded1"):
 
 
 def main():
-    files = sys.argv[1:]
+    files = [f for pattern in sys.argv[1:] for f in (_glob.glob(pattern) or [pattern])]
     if not files:
         files = list(Path("target").glob("*.csv"))
 

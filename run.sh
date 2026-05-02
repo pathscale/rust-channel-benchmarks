@@ -1,6 +1,6 @@
 #!/bin/bash
 export RUSTFLAGS="-C target-cpu=native"
-set -euxo pipefail
+set -euo pipefail
 IFS=$'\n\t'
 SLEEP_SEC=2
 cd "$(dirname "$0")"
@@ -10,19 +10,19 @@ cargo update
 
 mkdir -p target
 
-cargo build --release --bin mpsc
-cargo build --release --bin futures-channel
-cargo build --release --bin flume
-cargo build --release --bin flume-async
-cargo build --release --bin crossbeam-channel
-cargo build --release --bin async-channel
-cargo build --release --bin kanal
-cargo build --release --bin kanal-async
+#cargo build --release --bin mpsc
+#cargo build --release --bin futures-channel
+#cargo build --release --bin flume
+#cargo build --release --bin flume-async
+#cargo build --release --bin crossbeam-channel
+#cargo build --release --bin async-channel
 cargo build --release --bin crossfire
 cargo build --release --bin crossfire-async
-cargo build --release --bin futures-intrusive
-cargo build --release --bin tokio-mpsc
-cargo build --release --bin pipe-connector
+#cargo build --release --bin futures-intrusive
+#cargo build --release --bin pipe-connector
+cargo build --release --bin tokio-oneshot
+cargo build --release --bin bounded-spsc-queue
+cargo build --release --bin multiqueue2
 
 # Function to split output into throughput and latency CSVs
 split_output() {
@@ -32,15 +32,20 @@ split_output() {
     local latency_file="target/${base_name}_latency.csv"
     local name="$3"
 
-    # Write headers
-    echo "$name" > "$throughput_file"
-    echo "$name" > "$latency_file"
+    # Extract the benchmark name (first line) for the latency file header
+    local name=$(head -1 "$input")
 
     # Split at "--- latency ---" marker
-    awk -v tf="$throughput_file" -v lf="$latency_file" '
-    BEGIN { in_latency=0 }
+    awk -v tf="$throughput_file" -v lf="$latency_file" -v name="$name" '
+    BEGIN { in_latency=0; latency_header_written=0 }
     /^--- latency ---/ { in_latency=1; next }
-    in_latency { print >> lf }
+    in_latency {
+        if (!latency_header_written) {
+            print name >> lf
+            latency_header_written=1
+        }
+        print >> lf
+    }
     !in_latency { print >> tf }
     ' "$input"
 }
@@ -76,16 +81,6 @@ split_output() {
 #split_output /tmp/async-channel_output.txt async-channel "async-channel"
 
 sleep $SLEEP_SEC
-echo "kanal"
-./target/release/kanal > /tmp/kanal_output.txt
-split_output /tmp/kanal_output.txt kanal "kanal"
-
-sleep $SLEEP_SEC
-echo "kanal-async"
-./target/release/kanal-async > /tmp/kanal-async_output.txt
-split_output /tmp/kanal-async_output.txt kanal-async "kanal-async"
-
-sleep $SLEEP_SEC
 echo "crossfire"
 ./target/release/crossfire > /tmp/crossfire_output.txt
 split_output /tmp/crossfire_output.txt crossfire "crossfire"
@@ -100,15 +95,25 @@ split_output /tmp/crossfire-async_output.txt crossfire-async "crossfire-async"
 #./target/release/futures-intrusive > /tmp/futures-intrusive_output.txt
 #split_output /tmp/futures-intrusive_output.txt futures-intrusive "futures-intrusive"
 
-sleep $SLEEP_SEC
-echo "tokio-mpsc"
-./target/release/tokio-mpsc > /tmp/tokio-mpsc_output.txt
-split_output /tmp/tokio-mpsc_output.txt tokio-mpsc "tokio-mpsc"
+# sleep $SLEEP_SEC
+# echo "pipe-connector"
+# ./target/release/pipe-connector > /tmp/pipe-connector_output.txt
+# split_output /tmp/pipe-connector_output.txt pipe-connector "pipe-connector"
 
 sleep $SLEEP_SEC
-echo "pipe-connector"
-./target/release/pipe-connector > /tmp/pipe-connector_output.txt
-split_output /tmp/pipe-connector_output.txt pipe-connector "pipe-connector"
+echo "tokio-oneshot"
+./target/release/tokio-oneshot > /tmp/tokio-oneshot_output.txt
+split_output /tmp/tokio-oneshot_output.txt tokio-oneshot "tokio-oneshot"
+
+sleep $SLEEP_SEC
+echo "bounded-spsc-queue"
+./target/release/bounded-spsc-queue > /tmp/bounded-spsc-queue_output.txt
+split_output /tmp/bounded-spsc-queue_output.txt bounded-spsc-queue "bounded-spsc-queue"
+
+sleep $SLEEP_SEC
+echo "multiqueue2"
+./target/release/multiqueue2 > /tmp/multiqueue2_output.txt
+split_output /tmp/multiqueue2_output.txt multiqueue2 "multiqueue2"
 
 uv run python plot.py target/*.csv
 uv run python table.py target/*.csv

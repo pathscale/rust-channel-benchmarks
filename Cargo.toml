@@ -8,6 +8,7 @@ path = "lib.rs"
 
 [dependencies]
 async-channel = "1.7"
+bounded-spsc-queue = "0.4"
 crossbeam = "0.8"
 crossbeam-channel = "0.5"
 flume = "0.10"
@@ -18,6 +19,7 @@ crossfire = "3.1.7"
 futures-intrusive = { version = "0.5.0", features = ["parking_lot"] }
 parking_lot = "0.12"
 eyre = "0.6"
+multiqueue2 = { git = "https://github.com/abbychau/multiqueue2" }
 
 [profile.release]
 opt-level = 3
@@ -94,3 +96,17 @@ name = "pipe-connector"
 path = "pipe-connector-bench.rs"
 doc = false
 
+[[bin]]
+name = "tokio-oneshot"
+path = "tokio-oneshot.rs"
+doc = false
+
+[[bin]]
+name = "bounded-spsc-queue"
+path = "bounded-spsc-queue.rs"
+doc = false
+
+[[bin]]
+name = "multiqueue2"
+path = "multiqueue2.rs"
+doc = false
