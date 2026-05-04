@@ -18,6 +18,10 @@ mkdir -p target
 #cargo build --release --bin async-channel
 cargo build --release --bin crossfire
 cargo build --release --bin crossfire-async
+cargo build --release --bin crossfire-jemalloc
+cargo build --release --bin crossfire-async-jemalloc
+cargo build --release --bin crossfire-mimalloc
+cargo build --release --bin crossfire-async-mimalloc
 #cargo build --release --bin futures-intrusive
 #cargo build --release --bin pipe-connector
 cargo build --release --bin tokio-oneshot
@@ -89,6 +93,26 @@ sleep $SLEEP_SEC
 echo "crossfire-async"
 ./target/release/crossfire-async > /tmp/crossfire-async_output.txt
 split_output /tmp/crossfire-async_output.txt crossfire-async "crossfire-async"
+
+#sleep $SLEEP_SEC
+#echo "crossfire-jemalloc"
+#./target/release/crossfire-jemalloc > /tmp/crossfire-jemalloc_output.txt
+#split_output /tmp/crossfire-jemalloc_output.txt crossfire-jemalloc "crossfire-jemalloc"
+#
+#sleep $SLEEP_SEC
+#echo "crossfire-async-jemalloc"
+#./target/release/crossfire-async-jemalloc > /tmp/crossfire-async-jemalloc_output.txt
+#split_output /tmp/crossfire-async-jemalloc_output.txt crossfire-async-jemalloc "crossfire-async-jemalloc"
+#
+#sleep $SLEEP_SEC
+#echo "crossfire-mimalloc"
+#./target/release/crossfire-mimalloc > /tmp/crossfire-mimalloc_output.txt
+#split_output /tmp/crossfire-mimalloc_output.txt crossfire-mimalloc "crossfire-mimalloc"
+#
+#sleep $SLEEP_SEC
+#echo "crossfire-async-mimalloc"
+#./target/release/crossfire-async-mimalloc > /tmp/crossfire-async-mimalloc_output.txt
+#split_output /tmp/crossfire-async-mimalloc_output.txt crossfire-async-mimalloc "crossfire-async-mimalloc"
 
 #sleep $SLEEP_SEC
 #echo "futures-intrusive"

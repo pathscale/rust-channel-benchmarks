@@ -21,6 +21,12 @@ parking_lot = "0.12"
 eyre = "0.6"
 multiqueue2 = { git = "https://github.com/abbychau/multiqueue2" }
 
+[target.'cfg(not(target_env = "msvc"))'.dependencies]
+jemallocator = "0.5"
+
+[target.'cfg(not(windows))'.dependencies]
+mimalloc = "0.1"
+
 [profile.release]
 opt-level = 3
 debug = false
@@ -79,6 +85,26 @@ doc = false
 [[bin]]
 name = "crossfire-async"
 path = "crossfire-async.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-jemalloc"
+path = "crossfire-jemalloc.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-async-jemalloc"
+path = "crossfire-async-jemalloc.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-mimalloc"
+path = "crossfire-mimalloc.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-async-mimalloc"
+path = "crossfire-async-mimalloc.rs"
 doc = false
 
 [[bin]]
