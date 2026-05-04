@@ -14,6 +14,7 @@ crossbeam-channel = "0.5"
 flume = "0.10"
 futures = { version = "0.3", features = ["thread-pool"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
+monoio = { version = "0.2", features = ["sync"] }
 kanal = "0.1.1"
 crossfire = "3.1.7"
 futures-intrusive = { version = "0.5.0", features = ["parking_lot"] }
@@ -135,4 +136,9 @@ doc = false
 [[bin]]
 name = "multiqueue2"
 path = "multiqueue2.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-monoio"
+path = "crossfire-monoio.rs"
 doc = false

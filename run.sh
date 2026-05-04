@@ -22,6 +22,7 @@ cargo build --release --bin crossfire-jemalloc
 cargo build --release --bin crossfire-async-jemalloc
 cargo build --release --bin crossfire-mimalloc
 cargo build --release --bin crossfire-async-mimalloc
+cargo build --release --bin crossfire-monoio
 #cargo build --release --bin futures-intrusive
 #cargo build --release --bin pipe-connector
 cargo build --release --bin tokio-oneshot
@@ -93,6 +94,11 @@ sleep $SLEEP_SEC
 echo "crossfire-async"
 ./target/release/crossfire-async > /tmp/crossfire-async_output.txt
 split_output /tmp/crossfire-async_output.txt crossfire-async "crossfire-async"
+
+sleep $SLEEP_SEC
+echo "crossfire-monoio"
+./target/release/crossfire-monoio > /tmp/crossfire-monoio_output.txt
+split_output /tmp/crossfire-monoio_output.txt crossfire-monoio "crossfire-monoio"
 
 #sleep $SLEEP_SEC
 #echo "crossfire-jemalloc"

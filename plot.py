@@ -7,7 +7,7 @@ from PIL import Image
 
 def read_data(files):
     benchs = {}
-    names = ["crossfire", "crossfire-async", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
+    names = ["crossfire", "crossfire-async", "crossfire-monoio", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
     for f in files:
         if "_latency" in f:
             continue
@@ -38,7 +38,7 @@ def read_data(files):
 
 def read_latency_data(files):
     benchs = {}
-    names = ["crossfire", "crossfire-async", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
+    names = ["crossfire", "crossfire-async", "crossfire-monoio", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
     for f in files:
         if "_latency" not in f:
             continue
@@ -106,6 +106,7 @@ color_set = {
 colors = {
     "crossfire":               "indigo",
     "crossfire-async":         "teal",
+    "crossfire-monoio":        "sky",
     "crossfire-jemalloc":      "yellow",
     "crossfire-async-jemalloc": "magenta",
     "crossfire-mimalloc":      "coral",
