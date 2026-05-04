@@ -76,7 +76,7 @@ def read_latency_data(files):
     return benchs, names
 
 
-labels = ["seq", "spsc", "mpsc", "mpmc"]
+labels = ["spsc"]  # ["seq", "spsc", "mpsc", "mpmc"]
 variants = ["empty", "usize", "big"]
 
 
@@ -130,6 +130,7 @@ def get_color(name):
 
 def make_rows(bench_name, bench, names):
     bench_keys = list(bench.keys())
+    bench_keys = [k for k in bench_keys if k.startswith("spsc(")]  # filter to spsc only
     bench_keys.sort(key=sortFn)
     x_labels = bench_keys
 
@@ -226,7 +227,7 @@ def chart(benchs, names):
 
 
 def chart_latency(benchs, names):
-    latency_patterns = ["spsc", "mpsc", "mpmc"]
+    latency_patterns = ["spsc"]  # ["spsc", "mpsc", "mpmc"]
     latency_payloads = ["empty", "usize", "big"]
 
     # Only use channels that have latency data
