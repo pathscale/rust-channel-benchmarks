@@ -15,12 +15,13 @@ flume = "0.10"
 futures = { version = "0.3", features = ["thread-pool"] }
 tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync"] }
 monoio = { version = "0.2", features = ["sync"] }
+smol = "2"
 kanal = "0.1.1"
 crossfire = "3.1.7"
 futures-intrusive = { version = "0.5.0", features = ["parking_lot"] }
 parking_lot = "0.12"
 eyre = "0.6"
-multiqueue2 = { git = "https://github.com/abbychau/multiqueue2" }
+#multiqueue2 = { git = "https://github.com/abbychau/multiqueue2" }
 
 [target.'cfg(not(target_env = "msvc"))'.dependencies]
 jemallocator = "0.5"
@@ -133,12 +134,22 @@ name = "bounded-spsc-queue"
 path = "bounded-spsc-queue.rs"
 doc = false
 
-[[bin]]
-name = "multiqueue2"
-path = "multiqueue2.rs"
-doc = false
+#[[bin]]
+#name = "multiqueue2"
+#path = "multiqueue2.rs"
+#doc = false
 
 [[bin]]
 name = "crossfire-monoio"
 path = "crossfire-monoio.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-async-spin"
+path = "crossfire-async-spin.rs"
+doc = false
+
+[[bin]]
+name = "crossfire-smol"
+path = "crossfire-smol.rs"
 doc = false

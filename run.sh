@@ -16,18 +16,20 @@ mkdir -p target
 #cargo build --release --bin flume-async
 #cargo build --release --bin crossbeam-channel
 #cargo build --release --bin async-channel
-cargo build --release --bin crossfire
+#cargo build --release --bin crossfire
 cargo build --release --bin crossfire-async
-cargo build --release --bin crossfire-jemalloc
+#cargo build --release --bin crossfire-jemalloc
 cargo build --release --bin crossfire-async-jemalloc
-cargo build --release --bin crossfire-mimalloc
+#cargo build --release --bin crossfire-mimalloc
 cargo build --release --bin crossfire-async-mimalloc
-cargo build --release --bin crossfire-monoio
+#cargo build --release --bin crossfire-monoio
+cargo build --release --bin crossfire-smol
+cargo build --release --bin crossfire-async-spin
 #cargo build --release --bin futures-intrusive
 #cargo build --release --bin pipe-connector
-cargo build --release --bin tokio-oneshot
+#cargo build --release --bin tokio-oneshot
 cargo build --release --bin bounded-spsc-queue
-cargo build --release --bin multiqueue2
+#cargo build --release --bin multiqueue2
 
 # Function to split output into throughput and latency CSVs
 split_output() {
@@ -85,40 +87,50 @@ split_output() {
 #./target/release/async-channel > /tmp/async-channel_output.txt
 #split_output /tmp/async-channel_output.txt async-channel "async-channel"
 
-sleep $SLEEP_SEC
-echo "crossfire"
-./target/release/crossfire > /tmp/crossfire_output.txt
-split_output /tmp/crossfire_output.txt crossfire "crossfire"
+#sleep $SLEEP_SEC
+#echo "crossfire"
+#./target/release/crossfire > /tmp/crossfire_output.txt
+#split_output /tmp/crossfire_output.txt crossfire "crossfire"
 
 sleep $SLEEP_SEC
 echo "crossfire-async"
 ./target/release/crossfire-async > /tmp/crossfire-async_output.txt
 split_output /tmp/crossfire-async_output.txt crossfire-async "crossfire-async"
 
+#sleep $SLEEP_SEC
+#echo "crossfire-monoio"
+#./target/release/crossfire-monoio > /tmp/crossfire-monoio_output.txt
+#split_output /tmp/crossfire-monoio_output.txt crossfire-monoio "crossfire-monoio"
+
 sleep $SLEEP_SEC
-echo "crossfire-monoio"
-./target/release/crossfire-monoio > /tmp/crossfire-monoio_output.txt
-split_output /tmp/crossfire-monoio_output.txt crossfire-monoio "crossfire-monoio"
+echo "crossfire-smol"
+./target/release/crossfire-smol > /tmp/crossfire-smol_output.txt
+split_output /tmp/crossfire-smol_output.txt crossfire-smol "crossfire-smol"
+
+sleep $SLEEP_SEC
+echo "crossfire-async-spin"
+./target/release/crossfire-async-spin > /tmp/crossfire-async-spin_output.txt
+split_output /tmp/crossfire-async-spin_output.txt crossfire-async-spin "crossfire-async-spin"
 
 #sleep $SLEEP_SEC
 #echo "crossfire-jemalloc"
 #./target/release/crossfire-jemalloc > /tmp/crossfire-jemalloc_output.txt
 #split_output /tmp/crossfire-jemalloc_output.txt crossfire-jemalloc "crossfire-jemalloc"
 #
-#sleep $SLEEP_SEC
-#echo "crossfire-async-jemalloc"
-#./target/release/crossfire-async-jemalloc > /tmp/crossfire-async-jemalloc_output.txt
-#split_output /tmp/crossfire-async-jemalloc_output.txt crossfire-async-jemalloc "crossfire-async-jemalloc"
+sleep $SLEEP_SEC
+echo "crossfire-async-jemalloc"
+./target/release/crossfire-async-jemalloc > /tmp/crossfire-async-jemalloc_output.txt
+split_output /tmp/crossfire-async-jemalloc_output.txt crossfire-async-jemalloc "crossfire-async-jemalloc"
 #
 #sleep $SLEEP_SEC
 #echo "crossfire-mimalloc"
 #./target/release/crossfire-mimalloc > /tmp/crossfire-mimalloc_output.txt
 #split_output /tmp/crossfire-mimalloc_output.txt crossfire-mimalloc "crossfire-mimalloc"
 #
-#sleep $SLEEP_SEC
-#echo "crossfire-async-mimalloc"
-#./target/release/crossfire-async-mimalloc > /tmp/crossfire-async-mimalloc_output.txt
-#split_output /tmp/crossfire-async-mimalloc_output.txt crossfire-async-mimalloc "crossfire-async-mimalloc"
+sleep $SLEEP_SEC
+echo "crossfire-async-mimalloc"
+./target/release/crossfire-async-mimalloc > /tmp/crossfire-async-mimalloc_output.txt
+split_output /tmp/crossfire-async-mimalloc_output.txt crossfire-async-mimalloc "crossfire-async-mimalloc"
 
 #sleep $SLEEP_SEC
 #echo "futures-intrusive"
@@ -130,20 +142,20 @@ split_output /tmp/crossfire-monoio_output.txt crossfire-monoio "crossfire-monoio
 # ./target/release/pipe-connector > /tmp/pipe-connector_output.txt
 # split_output /tmp/pipe-connector_output.txt pipe-connector "pipe-connector"
 
-sleep $SLEEP_SEC
-echo "tokio-oneshot"
-./target/release/tokio-oneshot > /tmp/tokio-oneshot_output.txt
-split_output /tmp/tokio-oneshot_output.txt tokio-oneshot "tokio-oneshot"
+#sleep $SLEEP_SEC
+#echo "tokio-oneshot"
+#./target/release/tokio-oneshot > /tmp/tokio-oneshot_output.txt
+#split_output /tmp/tokio-oneshot_output.txt tokio-oneshot "tokio-oneshot"
 
 sleep $SLEEP_SEC
 echo "bounded-spsc-queue"
 ./target/release/bounded-spsc-queue > /tmp/bounded-spsc-queue_output.txt
 split_output /tmp/bounded-spsc-queue_output.txt bounded-spsc-queue "bounded-spsc-queue"
 
-sleep $SLEEP_SEC
-echo "multiqueue2"
-./target/release/multiqueue2 > /tmp/multiqueue2_output.txt
-split_output /tmp/multiqueue2_output.txt multiqueue2 "multiqueue2"
+#sleep $SLEEP_SEC
+#echo "multiqueue2"
+#./target/release/multiqueue2 > /tmp/multiqueue2_output.txt
+#split_output /tmp/multiqueue2_output.txt multiqueue2 "multiqueue2"
 
 uv run python plot.py target/*.csv
 uv run python table.py target/*.csv

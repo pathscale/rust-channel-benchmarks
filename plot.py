@@ -7,7 +7,7 @@ from PIL import Image
 
 def read_data(files):
     benchs = {}
-    names = ["crossfire", "crossfire-async", "crossfire-monoio", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
+    names = ["crossfire", "crossfire-async", "crossfire-monoio", "crossfire-smol", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
     for f in files:
         if "_latency" in f:
             continue
@@ -38,7 +38,7 @@ def read_data(files):
 
 def read_latency_data(files):
     benchs = {}
-    names = ["crossfire", "crossfire-async", "crossfire-monoio", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
+    names = ["crossfire", "crossfire-async", "crossfire-monoio", "crossfire-smol", "crossfire-jemalloc", "crossfire-async-jemalloc", "crossfire-mimalloc", "crossfire-async-mimalloc", "tokio-oneshot", "bounded-spsc-queue", "multiqueue2"]
     for f in files:
         if "_latency" not in f:
             continue
@@ -107,10 +107,12 @@ colors = {
     "crossfire":               "indigo",
     "crossfire-async":         "teal",
     "crossfire-monoio":        "sky",
+    "crossfire-smol":          "violet",
     "crossfire-jemalloc":      "yellow",
     "crossfire-async-jemalloc": "magenta",
     "crossfire-mimalloc":      "coral",
     "crossfire-async-mimalloc": "orange",
+    "crossfire-async-spin":    "cyan",
     "tokio-oneshot":           "rose",
     "bounded-spsc-queue":      "amber",
     "multiqueue2":             "fuchsia",
@@ -126,6 +128,12 @@ def get_color(name):
             colors[name] = k
             return color_set[k]
     return "#888888"
+
+
+def filter_names_with_data(bench, names):
+    """Return only names that have at least one data point in bench."""
+    return [name for name in names
+            if any(name in bench[label] for label in bench)]
 
 
 def make_rows(bench_name, bench, names):
@@ -191,7 +199,8 @@ def get_range_excluding_outliers(rows, outlier_threshold=2.0):
 def chart(benchs, names):
     for bench_name in benchs:
         bench = benchs[bench_name]
-        rows, x_labels = make_rows(bench_name, bench, names)
+        active_names = filter_names_with_data(bench, names)
+        rows, x_labels = make_rows(bench_name, bench, active_names)
         bar_colors = []
         for (name, _) in rows:
             bar_colors.append(get_color(name))

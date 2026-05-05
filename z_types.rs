@@ -22,7 +22,7 @@ impl<T: BenchType> LatencyMessage<T> {
     }
 
     fn latency(&self) -> Duration {
-        Instant::now().duration_since(self.send_time)
+       self.send_time.elapsed()
     }
 
     fn test(&self) {
